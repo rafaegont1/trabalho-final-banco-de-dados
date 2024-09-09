@@ -3,6 +3,6 @@
 
 #include <mariadb/mysql.h>
 
-void search_doencas(MYSQL* connection);
+void list_doencas(MYSQL* connection);
 
 #endif // DATA_FETCHER_H

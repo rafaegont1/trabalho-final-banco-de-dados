@@ -22,12 +22,13 @@
 //     int id_tipo;
 // } patogenos_t;
 
-// typedef struct {
-//     int id;
-//     char nome[32];
-//     char cid[8];
-//     int id_patogeno;
-// } doencas_t;
+typedef struct {
+    char nome[32];
+    char esc_nome[32];
+    char cid[8];
+    char esc_cid[8];
+    int id_patogeno;
+} doencas_t;
 
 // typedef struct {
 //     int id;

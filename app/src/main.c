@@ -12,11 +12,14 @@ int main() {
 
     do {
         static const char* MENU =
+            "========================================\n"
             "1) Gerenciamento de Dados\n"
             "2) Consulta ao Catálogo de Doenças\n"
             "3) Apoio ao Diagnóstico\n"
             "4) Emissão de Relatórios\n"
             "5) Logs de acesso e operações\n"
+            "6) Sair\n"
+            "========================================\n"
             "Digite o comando: ";
 
         printf("%s\n", MENU);
@@ -25,13 +28,14 @@ int main() {
             clear_buffer();
         }
         clear_buffer();
+        printf("----------------------------------------\n");
 
         switch (op) {
             case 1: // Gerenciamento de Dados
                 insert_doenca(connection);
                 break;
             case 2: // Consulta ao Catálogo de Doenças
-                search_doencas(connection);
+                list_doencas(connection);
                 break;
             case 3: // Apoio ao Diagnóstico
                 break;

@@ -6,34 +6,30 @@
 #include "util.h"
 
 void insert_doenca(MYSQL* connection) {
+    doencas_t d;
     char query[256];
-    char nome[32];
-    char esc_nome[32];
-    char cid[8];
-    char esc_cid[32];
-    int id_patogeno;
 
     printf("Digite o nome técnico da doença: ");
-    fgets(nome, sizeof(nome), stdin);
-    nome[strcspn(nome, "\n")] = '\0';
+    fgets(d.nome, sizeof(d.nome), stdin);
+    d.nome[strcspn(d.nome, "\n")] = '\0';
 
     printf("Digite o CID da doença: ");
-    fgets(cid, sizeof(cid), stdin);
-    cid[strcspn(cid, "\n")] = '\0';
+    fgets(d.cid, sizeof(d.cid), stdin);
+    d.cid[strcspn(d.cid, "\n")] = '\0';
 
     printf("Digite o ID do patógeno causador da doença: ");
-    scanf("%d", &id_patogeno);
+    scanf("%d", &d.id_patogeno);
 
     // Protect against SQL injection
-    mysql_real_escape_string(connection, esc_nome, nome, strlen(nome));
-    mysql_real_escape_string(connection, esc_cid, cid, strlen(cid));
+    mysql_real_escape_string(connection, d.esc_nome, d.nome, strlen(d.nome));
+    mysql_real_escape_string(connection, d.esc_cid, d.cid, strlen(d.cid));
 
     snprintf(
         query,
         sizeof(query),
         "INSERT INTO doencas (nome, cid, id_patogeno) VALUES"
         "    (\'%s\', \'%s\', \'%d\')",
-        nome, cid, id_patogeno
+        d.nome, d.cid, d.id_patogeno
     );
 
     if (mysql_query(connection, query) != 0) {
