@@ -5,33 +5,19 @@
 #include <string.h>
 #include "util.h"
 
-// O software deve possibilitar ao usuário listar as doenças cadastradas e,
-// também, pesquisar uma doença pelo nome técnico, nome popular, CID ou
-// patógeno. Ao selecionar uma doença, devem ser exibidos todos os seus dados,
-// incluindo seus sintomas.
-void list_doencas(MYSQL* connection) {
-    MYSQL_RES* result = NULL;
-    MYSQL_ROW row;
-    int op;
-    char query[1024];
-    char find_where[128];
+static const char* get_where_clause(const int op) {
+    static const char* DOENCA_COLUMN[] = {
+        "",
+        "d.nome",  // nome técnico
+        "np.nome", // nome popula
+        "d.cid",   // CID
+        "p.id"     // patógeno
+    };
+    static char clause[128] = "WHERE ";
+    char tmp[64];
 
-    static const char* MENU =
-        "1) Listar todas as doenças\n"
-        "2) Consultar por nome técnico\n"
-        "3) Consultar por nome popular\n"
-        "4) Consultar por CID\n"
-        "5) Consultar por patógeno\n"
-        "6) Voltar\n";
-
-    printf("%s\n", MENU);
-    if ((scanf("%d", &op) != 1) || (op < 1) || (op > 6)) {
-        fprintf(stderr, "Erro ao ler o comando, digite novamente: ");
-        clear_buffer();
-    }
-    clear_buffer();
-
-    if (op == 6) return;
+    strcat(clause, DOENCA_COLUMN[op - 1]);
+    strcat(clause, " = ");
 
     printf(
         "Digite o %s da doença: ",
@@ -41,85 +27,87 @@ void list_doencas(MYSQL* connection) {
         op == 5 ? "patógeno causador" :
         ""
     );
-    fgets(find_where, sizeof(find_where), stdin);
-    find_where[strcspn(find_where, "\n")] = '\0';
+    fgets(tmp, sizeof(tmp), stdin);
+    tmp[strcspn(tmp, "\n")] = '\0';
+    strcat(clause, "\'");
+    strcat(clause, tmp);
+    strcat(clause, "\'");
+
+    return clause;
+}
+
+// O software deve possibilitar ao usuário listar as doenças cadastradas e,
+// também, pesquisar uma doença pelo nome técnico, nome popular, CID ou
+// patógeno. Ao selecionar uma doença, devem ser exibidos todos os seus dados,
+// incluindo seus sintomas.
+void list_doencas(MYSQL* connection) {
+    MYSQL_RES* result = NULL;
+    MYSQL_ROW row;
+    int op;
+    char query[1024];
+    const char* where_clause = NULL;
+
+    static const char* MENU =
+        "1) Listar todas as doenças\n"
+        "2) Consultar por nome técnico\n"
+        "3) Consultar por nome popular\n"
+        "4) Consultar por CID\n"
+        "5) Consultar por patógeno\n"
+        "6) Voltar\n"
+        "Digite o comando: ";
+
+    printf("%s\n", MENU);
+    if ((scanf("%d", &op) != 1) || (op < 1) || (op > 6)) {
+        fprintf(stderr, "Erro ao ler o comando, digite novamente: ");
+        clear_buffer();
+    }
+    clear_buffer();
+
+    if (op == 6) {
+        printf("Voltando...\n");
+        return;
+    } else if (op != 1) {
+        where_clause = get_where_clause(op);
+    }
+
 
     printf("----------------------------------------\n");
 
-    static const char* OPTIONS[] = {
-        "",
-        "d.nome",  // nome técnico
-        "np.nome", // nome popula
-        "d.cid",   // CID
-        "p.id"     // patógeno
-    };
-
-    if (op == 1) {
-    } else {
-    }
-    snprintf(query, strlen(query),
-
+    snprintf(query, sizeof(query),
+        "SELECT d.id, d.nome, d.cid, p.nome AS pat_nome, pt.nome AS pat_tipo, "
+        "    GROUP_CONCAT(DISTINCT np.nome ORDER BY np.nome SEPARATOR ', ') AS nomes_pop, "
+        "    GROUP_CONCAT(CONCAT(s.nome, ' (', ds.ocorrencia, ')') "
+        "        ORDER BY FIELD(ds.ocorrencia, 'muito comum', 'comum', 'pouco comum', 'raro', 'muito raro'), s.nome "
+        "        SEPARATOR ', ') AS sintomas "
+        "FROM doencas AS d "
+        "JOIN doenca_sintoma AS ds ON ds.id_doenca = d.id "
+        "JOIN sintomas AS s ON s.id = ds.id_sintoma "
+        "JOIN patogenos AS p ON p.id = d.id_patogeno "
+        "JOIN patogeno_tipo AS pt ON pt.id = p.id_tipo "
+        "LEFT JOIN nomes_pop AS np ON np.id_doenca = d.id "
+        "%s "
+        "GROUP BY d.id, d.nome, d.cid, p.nome, pt.nome "
+        "ORDER BY d.nome;",
+        where_clause != NULL ? where_clause : ""
     );
-    if (mysql_query(connection, DOENCAS) != 0) {
+
+    if (mysql_query(connection, query) != 0) {
       exit_error(connection);
     }
-
-        static const char* DOENCAS =
-        "SELECT d.id, d.nome, d.cid, p.nome AS patogeno, pt.nome AS tipo, "
-        "    GROUP_CONCAT( "
-        "        CONCAT(s.nome, ' (', ds.ocorrencia, ')') "
-        "        ORDER BY FIELD(ds.ocorrencia, "
-        "            'muito comum', 'comum', 'pouco comum', 'raro', 'muito raro'), "
-        "            s.nome "
-        "        SEPARATOR ', ' "
-        "    ) AS sintomas "
-        "FROM doencas AS d "
-        "JOIN doenca_sintoma AS ds ON ds.id_doenca = d.id "
-        "JOIN sintomas AS s ON ds.id_sintoma = s.id "
-        "JOIN patogenos AS p ON p.id = d.id_patogeno "
-        "JOIN patogeno_tipo AS pt ON pt.id = p.id_tipo "
-        "GROUP BY d.id "
-        "ORDER BY d.nome;";
-
-    snprintf(
-        query, sizeof(query),
-        "SELECT d.id, d.nome, d.cid, p.nome AS patogeno, pt.nome AS tipo, "
-        "    GROUP_CONCAT( "
-        "        CONCAT(s.nome, ' (', ds.ocorrencia, ')') "
-        "        ORDER BY FIELD(ds.ocorrencia, "
-        "            'muito comum', 'comum', 'pouco comum', 'raro', 'muito raro'), "
-        "            s.nome "
-        "        SEPARATOR ', ' "
-        "    ) AS sintomas "
-        "FROM doencas AS d "
-        "JOIN doenca_sintoma AS ds ON ds.id_doenca = d.id "
-        "JOIN sintomas AS s ON ds.id_sintoma = s.id "
-        "JOIN patogenos AS p ON p.id = d.id_patogeno "
-        "JOIN patogeno_tipo AS pt ON pt.id = p.id_tipo "
-        "%s "
-        "GROUP BY d.id "
-        "ORDER BY d.nome;",
-        where_clause
-    );
-
-    // if (mysql_query(connection, DOENCAS) != 0) {
-    //     exit_error(connection);
-    // }
 
     result = mysql_store_result(connection);
     if (result == NULL) {
         exit_error(connection);
     }
 
-    printf("<DOENÇAS>\n");
-    printf("\n");
     while ((row = mysql_fetch_row(result)) != NULL) {
         printf("ID: %s\n", row[0]);
         printf("Nome: %s\n", row[1]);
         printf("CID: %s\n", row[2]);
-        printf("Patógeno: %s\n", row[3]);
+        printf("Nome do patógeno: %s\n", row[3]);
         printf("Tipo de patógeno: %s\n", row[4]);
-        printf("Sintomas: %s\n", row[5]);
+        printf("Nomes populares: %s\n", row[5]);
+        printf("Sintomas: %s\n", row[6]);
         printf("----------------------------------------\n");
     }
 
