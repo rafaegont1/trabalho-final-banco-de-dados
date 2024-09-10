@@ -10,7 +10,7 @@ void clear_buffer() {
 }
 
 void mariadb_error(MYSQL* connection) {
-    fprintf(stderr, "mariadb error: %s\n", mysql_error(connection));
+    fprintf(stderr, "\e[31mmariadb error:\e[m\n: %s\n", mysql_error(connection));
     // mysql_close(connection);
     // exit(EXIT_FAILURE);
 }
