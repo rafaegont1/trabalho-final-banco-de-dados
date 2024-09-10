@@ -2,16 +2,17 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 void clear_buffer() {
     char c;
     while ((c = getchar()) != '\n' && c != EOF) {}
 }
 
-void exit_error(MYSQL* connection) {
+void mariadb_error(MYSQL* connection) {
     fprintf(stderr, "mariadb error: %s\n", mysql_error(connection));
-    mysql_close(connection);
-    exit(EXIT_FAILURE);
+    // mysql_close(connection);
+    // exit(EXIT_FAILURE);
 }
 
 MYSQL* init() {
@@ -34,19 +35,44 @@ MYSQL* init() {
             0)           // Additional options
         == NULL)
     {
-        exit_error(connection);
+        mariadb_error(connection);
     }
 
     return connection;
 }
 
-void write_log(const char* query) {
-    FILE* fp = fopen("activity.log", "a");
-    if (fp == NULL) {
+// É desejável que o software mantenha um sistema de logging que registre todas
+// as operações realizadas (cadastros, consultas, emissão de relatórios).
+// Os logs devem incluir informações de data, hora e tipo de operação realizada.
+// Os logs devem mantidos em arquivos texto puro.
+void write_log(enum log_type type) {
+    static const char* TYPE_STR[] = {
+        "cadastro",
+        "consulta",
+        "emissão de relatório",
+    };
+    FILE* fp;
+    time_t now;
+    struct tm* local_time;
+
+    if ((fp = fopen("log.txt", "a")) == NULL) {
         fprintf(stderr, "Erro ao tentar abrir o log para gravar\n");
     }
 
-    fprintf(fp, "%s;", query);
+    time(&now);
+    local_time = localtime(&now);
+
+    fprintf(
+        fp,
+        "Operação \"%s\" realizada na data %02d/%02d/%04d às %02d:%02d:%02d horas\n",
+        TYPE_STR[type],
+        local_time->tm_mday,
+        local_time->tm_mon + 1,
+        local_time->tm_year + 1900,
+        local_time->tm_hour,
+        local_time->tm_min,
+        local_time->tm_sec
+    );
 
     fclose(fp);
 }

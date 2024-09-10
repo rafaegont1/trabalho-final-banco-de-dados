@@ -17,12 +17,11 @@ int main() {
             "2) Consulta ao Catálogo de Doenças\n"
             "3) Apoio ao Diagnóstico\n"
             "4) Emissão de Relatórios\n"
-            "5) Logs de acesso e operações\n"
-            "6) Sair\n"
+            "5) Sair\n"
             "========================================\n"
             "Digite o comando: ";
 
-        printf("%s\n", MENU);
+        printf("%s", MENU);
         if (scanf("%d", &op) != 1) {
             fprintf(stderr, "Erro ao ler o comando, digite novamente: ");
             clear_buffer();
@@ -31,28 +30,16 @@ int main() {
         printf("----------------------------------------\n");
 
         switch (op) {
-            case 1: // Gerenciamento de Dados
-                insert_doenca(connection);
-                break;
-            case 2: // Consulta ao Catálogo de Doenças
-                list_doencas(connection);
-                break;
-            case 3: // Apoio ao Diagnóstico
-                break;
-            case 4: // Emissão de Relatórios
-                break;
-            case 5: // Logs de acesso e operações
-                break;
-            case 6:
-                printf("Saindo...\n");
-                break;
-            default:
-                printf("Comando não definido\n");
-                break;
+            case 1:  insertion_menu(connection); break;
+            case 2:  list_doencas(connection); break;
+            case 3:  search_symptoms(); break;
+            case 4:  break; // Emissão de Relatórios
+            case 5:  printf("Saindo...\n"); break;
+            default: printf("Comando não definido\n"); break;
         }
-    } while (op != 6);
 
-    // Encerra a conexão com o banco de dados
+    } while (op != 5);
+
     mysql_close(connection);
 
     return 0;

@@ -3,6 +3,6 @@
 
 #include <mariadb/mysql.h>
 
-void insert_doenca(MYSQL* connection);
+void insertion_menu(MYSQL* connection);
 
 #endif // DATA_MANAGER_H

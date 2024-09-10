@@ -3,20 +3,42 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "mariadb_com.h"
 #include "util.h"
 
-static const char* get_where_clause(const int op) {
+static int show_menu() {
+    static const char* MENU =
+        "1) Listar todas as doenças\n"
+        "2) Consultar por nome técnico\n"
+        "3) Consultar por nome popular\n"
+        "4) Consultar por CID\n"
+        "5) Consultar por patógeno\n"
+        "6) Voltar\n"
+        "Digite o comando: ";
+    int op;
+
+    printf("%s\n", MENU);
+    if ((scanf("%d", &op) != 1) || (op < 1) || (op > 6)) {
+        fprintf(stderr, "Erro ao ler o comando, digite novamente: ");
+        clear_buffer();
+    }
+    clear_buffer();
+
+    return op;
+}
+
+static const char* get_where_clause(MYSQL* connection, const int op) {
     static const char* DOENCA_COLUMN[] = {
-        "",
         "d.nome",  // nome técnico
         "np.nome", // nome popula
         "d.cid",   // CID
         "p.id"     // patógeno
     };
     static char clause[128] = "WHERE ";
-    char tmp[64];
+    char to_find[64];
+    char esc_to_find[64];
 
-    strcat(clause, DOENCA_COLUMN[op - 1]);
+    strcat(clause, DOENCA_COLUMN[op - 2]);
     strcat(clause, " = ");
 
     printf(
@@ -27,11 +49,16 @@ static const char* get_where_clause(const int op) {
         op == 5 ? "patógeno causador" :
         ""
     );
-    fgets(tmp, sizeof(tmp), stdin);
-    tmp[strcspn(tmp, "\n")] = '\0';
+    fgets(to_find, sizeof(to_find), stdin);
+    to_find[strcspn(to_find, "\n")] = '\0';
+
+    mysql_real_escape_string(connection, esc_to_find, to_find, strlen(to_find));
+
     strcat(clause, "\'");
-    strcat(clause, tmp);
+    strcat(clause, esc_to_find);
     strcat(clause, "\'");
+
+    printf("WHERE CLAUSE: %s\n", clause); // rascunho
 
     return clause;
 }
@@ -47,29 +74,14 @@ void list_doencas(MYSQL* connection) {
     char query[1024];
     const char* where_clause = NULL;
 
-    static const char* MENU =
-        "1) Listar todas as doenças\n"
-        "2) Consultar por nome técnico\n"
-        "3) Consultar por nome popular\n"
-        "4) Consultar por CID\n"
-        "5) Consultar por patógeno\n"
-        "6) Voltar\n"
-        "Digite o comando: ";
-
-    printf("%s\n", MENU);
-    if ((scanf("%d", &op) != 1) || (op < 1) || (op > 6)) {
-        fprintf(stderr, "Erro ao ler o comando, digite novamente: ");
-        clear_buffer();
-    }
-    clear_buffer();
+    op = show_menu();
 
     if (op == 6) {
         printf("Voltando...\n");
         return;
     } else if (op != 1) {
-        where_clause = get_where_clause(op);
+        where_clause = get_where_clause(connection, op);
     }
-
 
     printf("----------------------------------------\n");
 
@@ -80,10 +92,10 @@ void list_doencas(MYSQL* connection) {
         "        ORDER BY FIELD(ds.ocorrencia, 'muito comum', 'comum', 'pouco comum', 'raro', 'muito raro'), s.nome "
         "        SEPARATOR ', ') AS sintomas "
         "FROM doencas AS d "
-        "JOIN doenca_sintoma AS ds ON ds.id_doenca = d.id "
-        "JOIN sintomas AS s ON s.id = ds.id_sintoma "
-        "JOIN patogenos AS p ON p.id = d.id_patogeno "
-        "JOIN patogeno_tipo AS pt ON pt.id = p.id_tipo "
+        "LEFT JOIN doenca_sintoma AS ds ON ds.id_doenca = d.id "
+        "LEFT JOIN sintomas AS s ON s.id = ds.id_sintoma "
+        "LEFT JOIN patogenos AS p ON p.id = d.id_patogeno "
+        "LEFT JOIN patogeno_tipo AS pt ON pt.id = p.id_tipo "
         "LEFT JOIN nomes_pop AS np ON np.id_doenca = d.id "
         "%s "
         "GROUP BY d.id, d.nome, d.cid, p.nome, pt.nome "
@@ -92,12 +104,11 @@ void list_doencas(MYSQL* connection) {
     );
 
     if (mysql_query(connection, query) != 0) {
-      exit_error(connection);
+        mariadb_error(connection);
     }
 
-    result = mysql_store_result(connection);
-    if (result == NULL) {
-        exit_error(connection);
+    if ((result = mysql_store_result(connection)) == NULL) {
+        mariadb_error(connection);
     }
 
     while ((row = mysql_fetch_row(result)) != NULL) {
@@ -111,6 +122,7 @@ void list_doencas(MYSQL* connection) {
         printf("----------------------------------------\n");
     }
 
+    write_log(LOG_CONSULTAS);
     mysql_free_result(result);
 }
 
@@ -133,7 +145,7 @@ void search_symptoms() {
         tmp[strcspn(tmp, "\n")] = '\0';
 
         if (count > 0) {
-          strcat(symptoms, ", ");
+            strcat(symptoms, ", ");
         }
 
         strcat(symptoms, "\'");
@@ -151,5 +163,5 @@ void search_symptoms() {
 
     } while (op != 'n');
 
-    printf("Sintomas a pesquisar: %s\n", symptoms);
+    printf("Sintomas a pesquisar: %s\n", symptoms); // rascunho
 }
