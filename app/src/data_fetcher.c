@@ -134,20 +134,15 @@ void list_doencas(MYSQL* connection) {
     mysql_free_result(result);
 }
 
-void search_symptoms(MYSQL* connection) {
-    static const int MAX_COUNT = 16;
-
+static const char* get_symptoms(MYSQL* connection) {
     int count = 0;
-    char symptoms[1024] = "";
+    static char symptoms[1024];
     char tmp[64] = "";
     char op;
 
-    do {
-        if (count > MAX_COUNT) {
-            printf("Número máximo de sintomas a pesquisar permitido é 16\n");
-            break;
-        }
+    strcpy(symptoms, "");
 
+    do {
         printf("Digite o nome do sintoma: ");
         read_line(connection, tmp);
 
@@ -169,4 +164,60 @@ void search_symptoms(MYSQL* connection) {
         count++;
 
     } while (op != 'n');
+
+    return symptoms;
+}
+
+void search_symptoms(MYSQL* connection) {
+    MYSQL_RES* result = NULL;
+    MYSQL_ROW row;
+    char query[1024];
+    const char* symptoms;
+
+    symptoms = get_symptoms(connection);
+
+    snprintf(query, sizeof(query),
+        "SELECT d.nome, d.cid, "
+        "       COALESCE(SUM( "
+        "           CASE "
+        "               WHEN s.nome IN (%s) THEN "
+        "                   CASE ds.ocorrencia "
+        "                       WHEN 'muito comum' THEN 5 "
+        "                       WHEN 'comum' THEN 4 "
+        "                       WHEN 'pouco comum' THEN 3 "
+        "                       WHEN 'raro' THEN 2 "
+        "                       WHEN 'muito raro' THEN 1 "
+        "                   END "
+        "               ELSE -1 "
+        "           END "
+        "       ), 0) AS pontuacao_final "
+        "FROM doencas d "
+        "LEFT JOIN doenca_sintoma ds ON d.id = ds.id_doenca "
+        "LEFT JOIN sintomas s ON ds.id_sintoma = s.id "
+        "GROUP BY d.id, d.nome "
+        "ORDER BY pontuacao_final DESC",
+        symptoms
+    );
+
+    if (mysql_query(connection, query) != 0) {
+        mariadb_error_handler(connection);
+        return;
+    }
+
+    if ((result = mysql_store_result(connection)) == NULL) {
+        mariadb_error_handler(connection);
+        return;
+    }
+
+    printf(DASHED_LINE);
+    while ((row = mysql_fetch_row(result)) != NULL) {
+        printf("Nome: %s\n", row[0]);
+        printf("CID: %s\n", row[1]);
+        printf("Pontuação final: %s\n", row[2]);
+        printf(DASHED_LINE);
+    }
+    printf("Fim da lista!\n");
+
+    write_log(LOG_RELATORIO);
+    mysql_free_result(result);
 }
