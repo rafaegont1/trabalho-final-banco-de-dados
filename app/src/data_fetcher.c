@@ -7,17 +7,17 @@
 #include "util.h"
 
 static int show_menu() {
-    static const char* MENU =
+    int op;
+
+    printf(
         "1) Listar todas as doenças\n"
         "2) Consultar por nome técnico\n"
         "3) Consultar por nome popular\n"
         "4) Consultar por CID\n"
         "5) Consultar por patógeno\n"
         "6) Voltar\n"
-        "Digite o comando: ";
-    int op;
-
-    printf("%s\n", MENU);
+        "Digite o comando: "
+    );
     if ((scanf("%d", &op) != 1) || (op < 1) || (op > 6)) {
         fprintf(stderr, "Erro ao ler o comando, digite novamente: ");
         clear_buffer();
@@ -30,14 +30,16 @@ static int show_menu() {
 static const char* get_where_clause(MYSQL* connection, const int op) {
     static const char* DOENCA_COLUMN[] = {
         "d.nome",  // nome técnico
-        "np.nome", // nome popula
+        "np.nome", // nome popular
         "d.cid",   // CID
         "p.id"     // patógeno
     };
-    static char clause[128] = "WHERE ";
+
+    static char clause[128];
     char to_find[64];
     char esc_to_find[64];
 
+    strcpy(clause, "WHERE ");
     strcat(clause, DOENCA_COLUMN[op - 2]);
     strcat(clause, " = ");
 
@@ -58,7 +60,7 @@ static const char* get_where_clause(MYSQL* connection, const int op) {
     strcat(clause, esc_to_find);
     strcat(clause, "\'");
 
-    printf("WHERE CLAUSE: %s\n", clause); // rascunho
+    // printf("WHERE CLAUSE: %s\n", clause); // rascunho
 
     return clause;
 }
@@ -67,7 +69,7 @@ static const char* get_where_clause(MYSQL* connection, const int op) {
 // também, pesquisar uma doença pelo nome técnico, nome popular, CID ou
 // patógeno. Ao selecionar uma doença, devem ser exibidos todos os seus dados,
 // incluindo seus sintomas.
-void list_doencas(MYSQL* connection) {
+void list_doencas(MYSQL* connection, bool report) {
     MYSQL_RES* result = NULL;
     MYSQL_ROW row;
     int op;
@@ -102,13 +104,16 @@ void list_doencas(MYSQL* connection) {
         "ORDER BY d.nome;",
         where_clause != NULL ? where_clause : ""
     );
+    // printf("QUERY: ---%s---\n", query); // rascunho
 
     if (mysql_query(connection, query) != 0) {
         mariadb_error(connection);
+        return;
     }
 
     if ((result = mysql_store_result(connection)) == NULL) {
         mariadb_error(connection);
+        return;
     }
 
     while ((row = mysql_fetch_row(result)) != NULL) {
@@ -128,6 +133,7 @@ void list_doencas(MYSQL* connection) {
 
 void search_symptoms() {
     static const int MAX_COUNT = 16;
+
     int count = 0;
     char symptoms[1024] = "";
     char tmp[64] = "";

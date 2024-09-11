@@ -13,31 +13,35 @@ set(CMAKE_C_STANDARD 11)
 # Find required packages
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(MARIADB REQUIRED mariadb)
-pkg_check_modules(LIBHARU REQUIRED libharu)
+
+# CMake instructions to make the static lib
+add_library(pdfgen STATIC
+    ${CMAKE_SOURCE_DIR}/libs/pdfgen.c
+)
 
 # Include headers
-include_directories(
+target_include_directories(pdfgen PUBLIC
     ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/libs
     ${MARIADB_INCLUDE_DIRS}
-    ${LIBHARU_INCLUDE_DIRS}
 )
 
-# Link directories
-link_directories(
-    ${MARIADB_LIBRARY_DIRS}
-    ${LIBHARU_LIBRARY_DIRS}
-)
+# Link directories (not always necessary in modern CMake)
+link_directories(${MARIADB_LIBRARY_DIRS})
 
 # Set source files
 file(GLOB SOURCES "src/*.c")
 
 # Create executable
-add_executable(${PROJECT_NAME} ${SOURCES})
+add_executable(${PROJECT_NAME}
+    ${SOURCES}
+)
 
-# Link executable with MariaDB and LibHaru libraries
+# Link executable with MariaDB, pdfgen, and math library (m)
 target_link_libraries(${PROJECT_NAME}
     ${MARIADB_LIBRARIES}
-    ${LIBHARU_LIBRARIES}
+    pdfgen
+    m  # math.h
 )
 
 # Add compilation flags

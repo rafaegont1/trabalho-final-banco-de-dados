@@ -6,14 +6,6 @@
 #include "mysql.h"
 #include "util.h"
 
-static const char* OCORRENCIA_STR[] = {
-    "muito raro",
-    "raro",
-    "pouco comum",
-    "comum",
-    "muito comum"
-};
-
 static void insert_patogeno_tipo(MYSQL* connection) {
     char query[512];
     struct { char nome[32], esc_nome[32]; } pt;
@@ -24,9 +16,10 @@ static void insert_patogeno_tipo(MYSQL* connection) {
     mysql_real_escape_string(connection, pt.esc_nome, pt.nome, strlen(pt.nome));
 
     snprintf(query, sizeof(query),
-        "INSERT INTO patogeno_tipo (nome) VALUES (%s)",
+        "INSERT INTO patogeno_tipo (nome) VALUES (\'%s\')",
         pt.esc_nome
     );
+    // printf("QUERY: --%s--\n", query); // rascunho
 
     if (mysql_query(connection, query) != 0) {
         mariadb_error(connection);
@@ -46,11 +39,11 @@ static void insert_patogeno(MYSQL* connection) {
     mysql_real_escape_string(connection, p.esc_nome, p.nome, strlen(p.nome));
 
     do {
-        printf("Digite o ID do tipo de patógeno: ");
+        printf("Digite o ID do tipo de patógeno a ser associado: ");
     } while (scanf("%d", &p.id_tipo) != 1);
 
     snprintf(query, sizeof(query),
-        "INSERT INTO patogenos (nome, id_tipo) VALUES (%s, %d)",
+        "INSERT INTO patogenos (nome, id_tipo) VALUES (\'%s\', %d)",
         p.esc_nome, p.id_tipo
     );
 
@@ -120,6 +113,9 @@ static void insert_sintoma(MYSQL* connection) {
 }
 
 static void insert_doenca_sintomas(MYSQL* connection) {
+    static const char* OCORRENCIA_STR[] = {
+        "muito raro", "raro", "pouco comum", "comum", "muito comum"
+    };
     char query[512];
     struct { int id_doenca, id_sintoma, ocorr; } ds;
 
