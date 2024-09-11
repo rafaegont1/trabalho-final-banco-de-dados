@@ -73,7 +73,7 @@ void write_log(enum log_type type) {
 
     fprintf(fp,
         "Operação \"%s\" realizada na data %02d/%02d/%04d"
-        "às %02d:%02d:%02d horas\n", LOG_TYPE_STR[type],
+        " às %02d:%02d:%02d horas\n", LOG_TYPE_STR[type],
         local_time->tm_mday,
         local_time->tm_mon + 1,
         local_time->tm_year + 1900,

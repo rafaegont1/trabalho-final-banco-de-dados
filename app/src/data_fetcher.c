@@ -56,7 +56,7 @@ static const char* get_where_clause(MYSQL* connection, const int op) {
     return clause;
 }
 
-static MYSQL_RES* get_mariadb_result(MYSQL* connection, const char* where) {
+static MYSQL_RES* get_doenca_result(MYSQL* connection, const char* where) {
     MYSQL_RES* result = NULL;
     char query[1024];
 
@@ -91,27 +91,9 @@ static MYSQL_RES* get_mariadb_result(MYSQL* connection, const char* where) {
     return result;
 }
 
-static void print_on_console(MYSQL_RES* result) {
-    MYSQL_ROW row;
-
-    printf(DASHED_LINE);
-
-    while ((row = mysql_fetch_row(result)) != NULL) {
-        printf("ID: %s\n", row[0]);
-        printf("Nome: %s\n", row[1]);
-        printf("CID: %s\n", row[2]);
-        printf("Nome do patógeno: %s\n", row[3]);
-        printf("Tipo de patógeno: %s\n", row[4]);
-        printf("Nomes populares: %s\n", row[5]);
-        printf("Sintomas: %s\n", row[6]);
-        printf(DASHED_LINE);
-    }
-
-    printf("Fim da lista!\n");
-}
-
 void list_doencas(MYSQL* connection) {
     MYSQL_RES* result = NULL;
+    MYSQL_ROW row;
     int op;
     const char* where_clause = NULL;
 
@@ -126,9 +108,20 @@ void list_doencas(MYSQL* connection) {
         where_clause = get_where_clause(connection, op);
     }
 
-    result = get_mariadb_result(connection, where_clause);
+    result = get_doenca_result(connection, where_clause);
 
-    print_on_console(result);
+    printf(DASHED_LINE);
+    while ((row = mysql_fetch_row(result)) != NULL) {
+        printf("ID: %s\n", row[0]);
+        printf("Nome: %s\n", row[1]);
+        printf("CID: %s\n", row[2]);
+        printf("Nome do patógeno: %s\n", row[3]);
+        printf("Tipo de patógeno: %s\n", row[4]);
+        printf("Nomes populares: %s\n", row[5]);
+        printf("Sintomas: %s\n", row[6]);
+        printf(DASHED_LINE);
+    }
+    printf("Fim da lista!\n");
 
     write_log(LOG_CONSULTA);
     mysql_free_result(result);
@@ -168,46 +161,62 @@ static const char* get_symptoms(MYSQL* connection) {
     return symptoms;
 }
 
-void search_symptoms(MYSQL* connection) {
+static MYSQL_RES* get_symptoms_result(MYSQL* connection, const char* symptoms) {
     MYSQL_RES* result = NULL;
-    MYSQL_ROW row;
     char query[1024];
-    const char* symptoms;
-
-    symptoms = get_symptoms(connection);
 
     snprintf(query, sizeof(query),
         "SELECT d.nome, d.cid, "
-        "       COALESCE(SUM( "
-        "           CASE "
-        "               WHEN s.nome IN (%s) THEN "
-        "                   CASE ds.ocorrencia "
-        "                       WHEN 'muito comum' THEN 5 "
-        "                       WHEN 'comum' THEN 4 "
-        "                       WHEN 'pouco comum' THEN 3 "
-        "                       WHEN 'raro' THEN 2 "
-        "                       WHEN 'muito raro' THEN 1 "
-        "                   END "
-        "               ELSE -1 "
-        "           END "
-        "       ), 0) AS pontuacao_final "
+        "    COALESCE(SUM( "
+        "        CASE "
+        "            WHEN s.nome IN (%s) THEN "
+        "                CASE ds.ocorrencia "
+        "                    WHEN 'muito comum' THEN 5 "
+        "                    WHEN 'comum' THEN 4 "
+        "                    WHEN 'pouco comum' THEN 3 "
+        "                    WHEN 'raro' THEN 2 "
+        "                    WHEN 'muito raro' THEN 1 "
+        "                END "
+        "            ELSE 0 "
+        "        END "
+        "    ), 0) - ( "
+        "        SELECT COUNT(*) "
+        "        FROM sintomas s2 "
+        "        WHERE s2.nome IN (%s) "
+        "        AND s2.id NOT IN ( "
+        "            SELECT ds.id_sintoma "
+        "            FROM doenca_sintoma ds "
+        "            WHERE ds.id_doenca = d.id "
+        "        ) "
+        "    ) AS pontuacao_final "
         "FROM doencas d "
         "LEFT JOIN doenca_sintoma ds ON d.id = ds.id_doenca "
         "LEFT JOIN sintomas s ON ds.id_sintoma = s.id "
         "GROUP BY d.id, d.nome "
         "ORDER BY pontuacao_final DESC",
-        symptoms
+        symptoms, symptoms
     );
 
     if (mysql_query(connection, query) != 0) {
         mariadb_error_handler(connection);
-        return;
+        return NULL;
     }
 
     if ((result = mysql_store_result(connection)) == NULL) {
         mariadb_error_handler(connection);
-        return;
+        return NULL;
     }
+
+    return result;
+}
+
+void search_symptoms(MYSQL* connection) {
+    MYSQL_RES* result = NULL;
+    MYSQL_ROW row;
+    const char* symptoms;
+
+    symptoms = get_symptoms(connection);
+    result = get_symptoms_result(connection, symptoms);
 
     printf(DASHED_LINE);
     while ((row = mysql_fetch_row(result)) != NULL) {
