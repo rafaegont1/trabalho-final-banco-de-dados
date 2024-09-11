@@ -176,19 +176,19 @@ ORDER BY d.nome;
 --	pontos obtidos.
 
 SELECT d.id, d.nome,
-       COALESCE(SUM(
-           CASE 
-               WHEN s.nome IN ("febre","tosse") THEN
-                   CASE ds.ocorrencia
-                       WHEN 'muito comum' THEN 5
-                       WHEN 'comum' THEN 4
-                       WHEN 'pouco comum' THEN 3
-                       WHEN 'raro' THEN 2
-                       WHEN 'muito raro' THEN 1
-                   END
-               ELSE -1 
-           END
-       ), 0) AS pontuacao_final
+		COALESCE(SUM(
+			CASE 
+				WHEN s.nome IN ("febre","tosse") THEN
+					CASE ds.ocorrencia
+						WHEN 'muito comum' THEN 5
+						WHEN 'comum' THEN 4
+						WHEN 'pouco comum' THEN 3
+						WHEN 'raro' THEN 2
+						WHEN 'muito raro' THEN 1
+					END
+				ELSE -1 
+			END
+		), 0) AS pontuacao_final
 FROM doencas d
 LEFT JOIN doenca_sintoma ds ON d.id = ds.id_doenca
 LEFT JOIN sintomas s ON ds.id_sintoma = s.id
