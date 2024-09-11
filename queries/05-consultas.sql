@@ -186,9 +186,18 @@ SELECT d.id, d.nome,
                        WHEN 'raro' THEN 2
                        WHEN 'muito raro' THEN 1
                    END
-               ELSE -1 
+               ELSE 0
            END
-       ), 0) AS pontuacao_final
+       ), 0) - (
+           SELECT COUNT(*) 
+           FROM sintomas s2
+           WHERE s2.nome IN ("febre","tosse")
+           AND s2.id NOT IN (
+               SELECT ds.id_sintoma
+               FROM doenca_sintoma ds
+               WHERE ds.id_doenca = d.id
+           )
+       ) AS pontuacao_final
 FROM doencas d
 LEFT JOIN doenca_sintoma ds ON d.id = ds.id_doenca
 LEFT JOIN sintomas s ON ds.id_sintoma = s.id
