@@ -175,19 +175,22 @@ ORDER BY d.nome;
 --	iv. As doenças são ordenadas em ordem decrescente em relação ao total de
 --	pontos obtidos.
 
--- SELECT d.id, d.nome,
--- 	COALESCE(SUM(score),0) - SUM(selecionado.score IS NULL) AS pontuacao
--- FROM doencas d
--- LEFT JOIN sintomas AS s ON s.id_doenca = d.id                                
--- LEFT JOIN (SELECT nome,id_doenca,
--- 	CASE ocorrencia
--- 		WHEN 'muito comum' THEN 5
--- 		WHEN 'comum' THEN 4
--- 		WHEN 'pouco comum' THEN 3
--- 		WHEN 'raro' THEN 2
--- 		WHEN 'muito raro' THEN 1
--- 	END AS score
--- 	FROM sintomas WHERE nome IN ('febre', 'diarreia', 'tosse')) AS selecionado 
--- 	ON (selecionado.nome = s.nome AND selecionado.id_doenca = s.id_doenca)
--- GROUP BY d.id, d.nome
--- ORDER BY pontuacao DESC, d.nome ASC;
+SELECT d.id, d.nome,
+       COALESCE(SUM(
+           CASE 
+               WHEN s.nome IN ("febre","tosse") THEN
+                   CASE ds.ocorrencia
+                       WHEN 'muito comum' THEN 5
+                       WHEN 'comum' THEN 4
+                       WHEN 'pouco comum' THEN 3
+                       WHEN 'raro' THEN 2
+                       WHEN 'muito raro' THEN 1
+                   END
+               ELSE -1 
+           END
+       ), 0) AS pontuacao_final
+FROM doencas d
+LEFT JOIN doenca_sintoma ds ON d.id = ds.id_doenca
+LEFT JOIN sintomas s ON ds.id_sintoma = s.id
+GROUP BY d.id, d.nome
+ORDER BY pontuacao_final DESC;
