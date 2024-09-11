@@ -56,25 +56,9 @@ static const char* get_where_clause(MYSQL* connection, const int op) {
     return clause;
 }
 
-void list_doencas(MYSQL* connection, bool report) {
+static MYSQL_RES* get_mariadb_result(MYSQL* connection, const char* where) {
     MYSQL_RES* result = NULL;
-    MYSQL_ROW row;
-    int op;
     char query[1024];
-    const char* where_clause = NULL;
-
-    op = show_menu();
-
-    if (op < 1 || op > 6) {
-        printf("Comando não definido\n");
-    } else if (op == 6) {
-        printf("Voltando...\n");
-        return;
-    } else if (op != 1) {
-        where_clause = get_where_clause(connection, op);
-    }
-
-    printf(DASHED_LINE);
 
     snprintf(query, sizeof(query),
         "SELECT d.id, d.nome, d.cid, p.nome AS pat_nome, pt.nome AS pat_tipo, "
@@ -91,18 +75,26 @@ void list_doencas(MYSQL* connection, bool report) {
         "%s "
         "GROUP BY d.id, d.nome, d.cid, p.nome, pt.nome "
         "ORDER BY d.nome",
-        where_clause != NULL ? where_clause : ""
+        where != NULL ? where : ""
     );
 
     if (mysql_query(connection, query) != 0) {
         mariadb_error_handler(connection);
-        return;
+        return NULL;
     }
 
     if ((result = mysql_store_result(connection)) == NULL) {
         mariadb_error_handler(connection);
-        return;
+        return NULL;
     }
+
+    return result;
+}
+
+static void print_on_console(MYSQL_RES* result) {
+    MYSQL_ROW row;
+
+    printf(DASHED_LINE);
 
     while ((row = mysql_fetch_row(result)) != NULL) {
         printf("ID: %s\n", row[0]);
@@ -114,7 +106,29 @@ void list_doencas(MYSQL* connection, bool report) {
         printf("Sintomas: %s\n", row[6]);
         printf(DASHED_LINE);
     }
+
     printf("Fim da lista!\n");
+}
+
+void list_doencas(MYSQL* connection) {
+    MYSQL_RES* result = NULL;
+    int op;
+    const char* where_clause = NULL;
+
+    op = show_menu();
+
+    if (op < 1 || op > 6) {
+        printf("Comando não definido\n");
+    } else if (op == 6) {
+        printf("Voltando...\n");
+        return;
+    } else if (op != 1) {
+        where_clause = get_where_clause(connection, op);
+    }
+
+    result = get_mariadb_result(connection, where_clause);
+
+    print_on_console(result);
 
     write_log(LOG_CONSULTA);
     mysql_free_result(result);

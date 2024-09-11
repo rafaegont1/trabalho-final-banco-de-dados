@@ -18,7 +18,7 @@ int main(void) {
 
         switch (op) {
             case 1:  insertion_menu(connection); break;
-            case 2:  list_doencas(connection, false); break;
+            case 2:  list_doencas(connection); break;
             case 3:  search_symptoms(connection); break;
             case 4:  break; // Emissão de Relatórios
             case 5:  printf("Saindo...\n"); break;
@@ -71,7 +71,6 @@ static int show_menu() {
         "5) Sair\n"
         DOUBLE_DASHED_LINE
     );
-
     scanf_and_clear_stdin("%d", &op, "Digite o comando");
     printf(DASHED_LINE);
 
