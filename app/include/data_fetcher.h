@@ -5,6 +5,6 @@
 #include <mariadb/mysql.h>
 
 void list_doencas(MYSQL* connection, bool report);
-void search_symptoms();
+void search_symptoms(MYSQL* connection);
 
 #endif // DATA_FETCHER_H
