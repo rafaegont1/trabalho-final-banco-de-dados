@@ -7,188 +7,173 @@
 #include "util.h"
 
 static void insert_patogeno_tipo(MYSQL* connection) {
-    char query[512];
-    struct { char nome[32], esc_nome[32]; } pt;
+    char query[1024];
+    char patogeno_tipo_nome[32];
 
     printf("Digite o nome do tipo de patógeno: ");
-    fgets(pt.nome, sizeof(pt.nome), stdin);
-    pt.nome[strcspn(pt.nome, "\n")] = '\0';
-    mysql_real_escape_string(connection, pt.esc_nome, pt.nome, strlen(pt.nome));
+    read_line(connection, patogeno_tipo_nome);
 
     snprintf(query, sizeof(query),
         "INSERT INTO patogeno_tipo (nome) VALUES (\'%s\')",
-        pt.esc_nome
+        patogeno_tipo_nome
     );
-    // printf("QUERY: --%s--\n", query); // rascunho
 
     if (mysql_query(connection, query) != 0) {
-        mariadb_error(connection);
-        return;
+        mariadb_error_handler(connection);
+    } else {
+        write_log(LOG_CADASTRO);
     }
-
-    write_log(LOG_CADASTRO);
 }
 
 static void insert_patogeno(MYSQL* connection) {
     char query[512];
-    struct { char nome[32], esc_nome[32]; int id_tipo; } p;
+    struct { char nome[32]; int id_tipo; } patogeno;
 
     printf("Digite o nome patógeno: ");
-    fgets(p.nome, sizeof(p.nome), stdin);
-    p.nome[strcspn(p.nome, "\n")] = '\0';
-    mysql_real_escape_string(connection, p.esc_nome, p.nome, strlen(p.nome));
+    read_line(connection, patogeno.nome);
 
-    do {
-        printf("Digite o ID do tipo de patógeno a ser associado: ");
-    } while (scanf("%d", &p.id_tipo) != 1);
+    scanf_and_clear_stdin("%d", &patogeno.id_tipo,
+        "Digite o ID do tipo de patógeno a ser associado"
+    );
 
     snprintf(query, sizeof(query),
         "INSERT INTO patogenos (nome, id_tipo) VALUES (\'%s\', %d)",
-        p.esc_nome, p.id_tipo
+        patogeno.nome, patogeno.id_tipo
     );
 
     if (mysql_query(connection, query) != 0) {
-        mariadb_error(connection);
-        return;
+        mariadb_error_handler(connection);
+    } else {
+        write_log(LOG_CADASTRO);
     }
-
-    write_log(LOG_CADASTRO);
 }
 
 static void insert_doenca(MYSQL* connection) {
     char query[512];
-    struct {
-        char nome[32], esc_nome[32], cid[8], esc_cid[8];
-        int id_patogeno;
-    } d;
+    struct { char nome[32], cid[8]; int id_patogeno; } doenca;
 
     printf("Digite o nome técnico da doença: ");
-    fgets(d.nome, sizeof(d.nome), stdin);
-    d.nome[strcspn(d.nome, "\n")] = '\0';
-    mysql_real_escape_string(connection, d.esc_nome, d.nome, strlen(d.nome));
+    read_line(connection, doenca.nome);
 
     printf("Digite o CID da doença: ");
-    fgets(d.cid, sizeof(d.cid), stdin);
-    d.cid[strcspn(d.cid, "\n")] = '\0';
-    mysql_real_escape_string(connection, d.esc_cid, d.cid, strlen(d.cid));
+    read_line(connection, doenca.cid);
 
-    do {
-        printf("Digite o ID do patógeno causador da doença: ");
-    } while (scanf("%d", &d.id_patogeno) != 1);
+    scanf_and_clear_stdin("%d", &doenca.id_patogeno,
+        "Digite o ID do patógeno causador da doença"
+    );
 
     snprintf(query, sizeof(query),
         "INSERT INTO doencas (nome, cid, id_patogeno) VALUES"
         "    (\'%s\', \'%s\', \'%d\')",
-        d.esc_nome, d.esc_cid, d.id_patogeno
+        doenca.nome, doenca.cid, doenca.id_patogeno
     );
 
     if (mysql_query(connection, query) != 0) {
-        mariadb_error(connection);
-        return;
+        mariadb_error_handler(connection);
+    } else {
+        write_log(LOG_CADASTRO);
     }
-
-    write_log(LOG_CADASTRO);
 }
 
 static void insert_sintoma(MYSQL* connection) {
     char query[512];
-    struct { char nome[32], esc_nome[32]; } s;
+    char sintoma_nome[32];
 
     printf("Digite o nome do sintoma: ");
-    fgets(s.nome, sizeof(s.nome), stdin);
-    s.nome[strcspn(s.nome, "\n")] = '\0';
-    mysql_real_escape_string(connection, s.esc_nome, s.nome, strlen(s.nome));
+    read_line(connection, sintoma_nome);
 
     snprintf(query, sizeof(query),
-        "INSERT INTO sintomas (nome) VALUES (\'%s\')",
-        s.esc_nome
+        "INSERT INTO sintomas (nome) VALUES (\'%s\')", sintoma_nome
     );
 
     if (mysql_query(connection, query) != 0) {
-        mariadb_error(connection);
-        return;
+        mariadb_error_handler(connection);
+    } else {
+        write_log(LOG_CADASTRO);
     }
-
-    write_log(LOG_CADASTRO);
 }
 
 static void insert_doenca_sintomas(MYSQL* connection) {
     static const char* OCORRENCIA_STR[] = {
         "muito raro", "raro", "pouco comum", "comum", "muito comum"
     };
+
     char query[512];
-    struct { int id_doenca, id_sintoma, ocorr; } ds;
+    struct { int id_doenca, id_sintoma, ocorr; } doenca_sintoma;
 
-    do {
-        printf("Digite o ID da doença: ");
-    } while (scanf("%d", &ds.id_doenca) != 1);
+    scanf_and_clear_stdin("%d", &doenca_sintoma.id_doenca,
+        "Digite o ID da doença"
+    );
 
-    do {
-        printf("Digite o ID do sintoma: ");
-    } while (scanf("%d", &ds.id_sintoma) != 1);
+    scanf_and_clear_stdin("%d", &doenca_sintoma.id_sintoma,
+        "Digite o ID do sintoma"
+    );
 
+    for (int i = 0; i < 5; i++) {
+        printf("%d | %s\n", i, OCORRENCIA_STR[i]);
+    }
     do {
-        printf("Digite o valor de ocorrência (0 a 4): ");
-    } while ((scanf("%d", &ds.ocorr) != 1) ||
-        (ds.ocorr < 0 || ds.ocorr > 4));
+        scanf_and_clear_stdin("%d", &doenca_sintoma.ocorr,
+            "Digite o valor de ocorrência (0 a 4): "
+        );
+    } while (doenca_sintoma.ocorr < 0 || doenca_sintoma.ocorr > 4);
 
     snprintf(query, sizeof(query),
         "INSERT INTO doenca_sintoma VALUES (%d, %d, \'%s\')",
-        ds.id_doenca, ds.id_sintoma, OCORRENCIA_STR[ds.ocorr]
+        doenca_sintoma.id_doenca, doenca_sintoma.id_sintoma,
+        OCORRENCIA_STR[doenca_sintoma.ocorr]
     );
 
     if (mysql_query(connection, query) != 0) {
-        mariadb_error(connection);
-        return;
+        mariadb_error_handler(connection);
+    } else {
+        write_log(LOG_CADASTRO);
     }
-
-    write_log(LOG_CADASTRO);
 }
 
 static void insert_nomes_pop(MYSQL* connection) {
     char query[512];
-    struct { int id_doenca; char nome[32], esc_nome[32]; } np;
+    struct { int id_doenca; char nome[32]; } nomes_pop;
 
-    do {
-        printf("Digite o ID da doença: ");
-    } while (scanf("%d", &np.id_doenca) != 1);
+    scanf_and_clear_stdin("%d", &nomes_pop.id_doenca,
+        "Digite o ID da doença"
+    );
 
     printf("Digite o nome popular da doença: ");
-    fgets(np.nome, sizeof(np.nome), stdin);
-    np.nome[strcspn(np.nome, "\n")] = '\0';
-    mysql_real_escape_string(connection, np.esc_nome, np.nome, strlen(np.nome));
+    read_line(connection, nomes_pop.nome);
 
     snprintf(query, sizeof(query),
         "INSERT INTO doenca_sintoma VALUES (%d, \'%s\')",
-        np.id_doenca, np.esc_nome
+        nomes_pop.id_doenca, nomes_pop.nome
     );
 
     if (mysql_query(connection, query) != 0) {
-        mariadb_error(connection);
-        return;
+        mariadb_error_handler(connection);
+    } else {
+        write_log(LOG_CADASTRO);
     }
-
-    write_log(LOG_CADASTRO);
 }
 
 void insertion_menu(MYSQL* connection) {
-    static const char* MENU =
+    int op;
+
+    printf(
         "1) Inserir novo tipo de patógeno\n"
         "2) Inserir patógeno\n"
         "3) Inserir doença\n"
         "4) Inserir sintoma\n"
         "5) Associar sintoma a uma doença\n"
         "6) Associar nome popular a uma doença\n"
-        "7) Voltar\n";
-    int op;
-
-    printf("%s", MENU);
+        "7) Voltar\n"
+        DASHED_LINE
+        "Digite o comando: "
+    );
     if (scanf("%d", &op) != 1) {
         fprintf(stderr, "Erro ao ler o comando, digite novamente: ");
-        clear_buffer();
+        clear_stdin();
     }
-    clear_buffer();
-    printf("----------------------------------------\n");
+    clear_stdin();
+    printf(DASHED_LINE);
 
     switch (op) {
         case 1:  insert_patogeno_tipo(connection);   break;

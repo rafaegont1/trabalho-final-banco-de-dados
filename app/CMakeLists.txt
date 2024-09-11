@@ -18,6 +18,8 @@ pkg_check_modules(MARIADB REQUIRED mariadb)
 add_library(pdfgen STATIC
     ${CMAKE_SOURCE_DIR}/libs/pdfgen.c
 )
+# Link math library to pdfgen
+target_link_libraries(pdfgen PUBLIC m)
 
 # Include headers
 target_include_directories(pdfgen PUBLIC
@@ -37,11 +39,10 @@ add_executable(${PROJECT_NAME}
     ${SOURCES}
 )
 
-# Link executable with MariaDB, pdfgen, and math library (m)
+# Link executable with MariaDB and pdfgen
 target_link_libraries(${PROJECT_NAME}
     ${MARIADB_LIBRARIES}
     pdfgen
-    m  # math.h
 )
 
 # Add compilation flags

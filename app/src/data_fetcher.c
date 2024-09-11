@@ -3,7 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "mariadb_com.h"
+#include <mariadb_com.h>
+#include "pdfgen.h"
 #include "util.h"
 
 static int show_menu() {
@@ -18,11 +19,7 @@ static int show_menu() {
         "6) Voltar\n"
         "Digite o comando: "
     );
-    if ((scanf("%d", &op) != 1) || (op < 1) || (op > 6)) {
-        fprintf(stderr, "Erro ao ler o comando, digite novamente: ");
-        clear_buffer();
-    }
-    clear_buffer();
+    scanf_and_clear_stdin("%d", &op, "Digite o comando");
 
     return op;
 }
@@ -37,7 +34,6 @@ static const char* get_where_clause(MYSQL* connection, const int op) {
 
     static char clause[128];
     char to_find[64];
-    char esc_to_find[64];
 
     strcpy(clause, "WHERE ");
     strcat(clause, DOENCA_COLUMN[op - 2]);
@@ -51,41 +47,18 @@ static const char* get_where_clause(MYSQL* connection, const int op) {
         op == 5 ? "patógeno causador" :
         ""
     );
-    fgets(to_find, sizeof(to_find), stdin);
-    to_find[strcspn(to_find, "\n")] = '\0';
-
-    mysql_real_escape_string(connection, esc_to_find, to_find, strlen(to_find));
+    read_line(connection, to_find);
 
     strcat(clause, "\'");
-    strcat(clause, esc_to_find);
+    strcat(clause, to_find);
     strcat(clause, "\'");
-
-    // printf("WHERE CLAUSE: %s\n", clause); // rascunho
 
     return clause;
 }
 
-// O software deve possibilitar ao usuário listar as doenças cadastradas e,
-// também, pesquisar uma doença pelo nome técnico, nome popular, CID ou
-// patógeno. Ao selecionar uma doença, devem ser exibidos todos os seus dados,
-// incluindo seus sintomas.
-void list_doencas(MYSQL* connection, bool report) {
+static MYSQL_RES* get_mariadb_result(MYSQL* connection, const char* where) {
     MYSQL_RES* result = NULL;
-    MYSQL_ROW row;
-    int op;
     char query[1024];
-    const char* where_clause = NULL;
-
-    op = show_menu();
-
-    if (op == 6) {
-        printf("Voltando...\n");
-        return;
-    } else if (op != 1) {
-        where_clause = get_where_clause(connection, op);
-    }
-
-    printf("----------------------------------------\n");
 
     snprintf(query, sizeof(query),
         "SELECT d.id, d.nome, d.cid, p.nome AS pat_nome, pt.nome AS pat_tipo, "
@@ -101,20 +74,27 @@ void list_doencas(MYSQL* connection, bool report) {
         "LEFT JOIN nomes_pop AS np ON np.id_doenca = d.id "
         "%s "
         "GROUP BY d.id, d.nome, d.cid, p.nome, pt.nome "
-        "ORDER BY d.nome;",
-        where_clause != NULL ? where_clause : ""
+        "ORDER BY d.nome",
+        where != NULL ? where : ""
     );
-    // printf("QUERY: ---%s---\n", query); // rascunho
 
     if (mysql_query(connection, query) != 0) {
-        mariadb_error(connection);
-        return;
+        mariadb_error_handler(connection);
+        return NULL;
     }
 
     if ((result = mysql_store_result(connection)) == NULL) {
-        mariadb_error(connection);
-        return;
+        mariadb_error_handler(connection);
+        return NULL;
     }
+
+    return result;
+}
+
+static void print_on_console(MYSQL_RES* result) {
+    MYSQL_ROW row;
+
+    printf(DASHED_LINE);
 
     while ((row = mysql_fetch_row(result)) != NULL) {
         printf("ID: %s\n", row[0]);
@@ -124,14 +104,37 @@ void list_doencas(MYSQL* connection, bool report) {
         printf("Tipo de patógeno: %s\n", row[4]);
         printf("Nomes populares: %s\n", row[5]);
         printf("Sintomas: %s\n", row[6]);
-        printf("----------------------------------------\n");
+        printf(DASHED_LINE);
     }
 
-    write_log(LOG_CONSULTAS);
+    printf("Fim da lista!\n");
+}
+
+void list_doencas(MYSQL* connection) {
+    MYSQL_RES* result = NULL;
+    int op;
+    const char* where_clause = NULL;
+
+    op = show_menu();
+
+    if (op < 1 || op > 6) {
+        printf("Comando não definido\n");
+    } else if (op == 6) {
+        printf("Voltando...\n");
+        return;
+    } else if (op != 1) {
+        where_clause = get_where_clause(connection, op);
+    }
+
+    result = get_mariadb_result(connection, where_clause);
+
+    print_on_console(result);
+
+    write_log(LOG_CONSULTA);
     mysql_free_result(result);
 }
 
-void search_symptoms() {
+void search_symptoms(MYSQL* connection) {
     static const int MAX_COUNT = 16;
 
     int count = 0;
@@ -139,7 +142,6 @@ void search_symptoms() {
     char tmp[64] = "";
     char op;
 
-    // 'febre', 'diarreia', 'tosse'
     do {
         if (count > MAX_COUNT) {
             printf("Número máximo de sintomas a pesquisar permitido é 16\n");
@@ -147,8 +149,7 @@ void search_symptoms() {
         }
 
         printf("Digite o nome do sintoma: ");
-        fgets(tmp, sizeof(tmp), stdin);
-        tmp[strcspn(tmp, "\n")] = '\0';
+        read_line(connection, tmp);
 
         if (count > 0) {
             strcat(symptoms, ", ");
@@ -159,15 +160,13 @@ void search_symptoms() {
         strcat(symptoms, "\'");
 
         do {
-            printf("Inserir mais um sintoma (s ou n): ");
-            scanf("%c", &op);
-            clear_buffer();
+            scanf_and_clear_stdin("%c", &op,
+                "Inserir mais um sintoma (s ou n)"
+            );
             op = tolower(op);
         } while (op != 's' && op != 'n');
 
         count++;
 
     } while (op != 'n');
-
-    printf("Sintomas a pesquisar: %s\n", symptoms); // rascunho
 }
