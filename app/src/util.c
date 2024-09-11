@@ -53,11 +53,9 @@ int read_line(MYSQL* connection, char* str) {
     return 0;
 }
 
-void write_log(enum log_type type) {
+void write_log(const enum log_type type) {
     static const char* LOG_TYPE_STR[] = {
-        "cadastro",
-        "consulta",
-        "emissão de relatório",
+        "cadastro", "consulta", "emissão de relatório",
     };
 
     FILE* fp;
@@ -87,4 +85,17 @@ void write_log(enum log_type type) {
 
 void mariadb_error_handler(MYSQL* connection) {
     printf_error("mariadb error: %s\n", mysql_error(connection));
+}
+
+MYSQL_RES* mariadb_get_result(MYSQL* connection, const char* query) {
+    MYSQL_RES* result;
+
+    if (mysql_query(connection, query) != 0) {
+        mariadb_error_handler(connection);
+        result = NULL;
+    } else if ((result = mysql_store_result(connection)) == NULL) {
+        mariadb_error_handler(connection);
+    }
+
+    return result;
 }

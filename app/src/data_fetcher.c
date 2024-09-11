@@ -10,20 +10,23 @@
 static int show_menu() {
     int op;
 
-    printf(
-        "1) Listar todas as doenças\n"
-        "2) Consultar por nome técnico\n"
-        "3) Consultar por nome popular\n"
-        "4) Consultar por CID\n"
-        "5) Consultar por patógeno\n"
-        "6) Voltar\n"
-        "Digite o comando: "
-    );
-    scanf_and_clear_stdin("%d", &op, "Digite o comando");
+    do {
+        printf(
+            "1) Listar todas as doenças\n"
+            "2) Consultar por nome técnico\n"
+            "3) Consultar por nome popular\n"
+            "4) Consultar por CID\n"
+            "5) Consultar por patógeno\n"
+            "6) Voltar\n"
+            "Digite o comando: "
+        );
+        scanf_and_clear_stdin("%d", &op, "Digite o comando");
+    } while (op < 1 || op > 6);
 
     return op;
 }
 
+// This function only works when 'op' is >=2 or <=5
 static const char* get_where_clause(MYSQL* connection, const int op) {
     static const char* DOENCA_COLUMN[] = {
         "d.nome",  // nome técnico
@@ -57,7 +60,6 @@ static const char* get_where_clause(MYSQL* connection, const int op) {
 }
 
 static MYSQL_RES* get_doenca_result(MYSQL* connection, const char* where) {
-    MYSQL_RES* result = NULL;
     char query[1024];
 
     snprintf(query, sizeof(query),
@@ -78,36 +80,23 @@ static MYSQL_RES* get_doenca_result(MYSQL* connection, const char* where) {
         where != NULL ? where : ""
     );
 
-    if (mysql_query(connection, query) != 0) {
-        mariadb_error_handler(connection);
-        return NULL;
-    }
-
-    if ((result = mysql_store_result(connection)) == NULL) {
-        mariadb_error_handler(connection);
-        return NULL;
-    }
-
-    return result;
+    return mariadb_get_result(connection, query);
 }
 
 void list_doencas(MYSQL* connection) {
-    MYSQL_RES* result = NULL;
+    MYSQL_RES* result;
     MYSQL_ROW row;
     int op;
     const char* where_clause = NULL;
 
     op = show_menu();
 
-    if (op < 1 || op > 6) {
-        printf("Comando não definido\n");
-    } else if (op == 6) {
+    if (op == 6) {
         printf("Voltando...\n");
         return;
-    } else if (op != 1) {
-        where_clause = get_where_clause(connection, op);
     }
 
+    where_clause = op == 1 ? NULL : get_where_clause(connection, op);
     result = get_doenca_result(connection, where_clause);
 
     printf(DASHED_LINE);
@@ -162,7 +151,6 @@ static const char* get_symptoms(MYSQL* connection) {
 }
 
 static MYSQL_RES* get_symptoms_result(MYSQL* connection, const char* symptoms) {
-    MYSQL_RES* result = NULL;
     char query[1024];
 
     snprintf(query, sizeof(query),
@@ -197,21 +185,11 @@ static MYSQL_RES* get_symptoms_result(MYSQL* connection, const char* symptoms) {
         symptoms, symptoms
     );
 
-    if (mysql_query(connection, query) != 0) {
-        mariadb_error_handler(connection);
-        return NULL;
-    }
-
-    if ((result = mysql_store_result(connection)) == NULL) {
-        mariadb_error_handler(connection);
-        return NULL;
-    }
-
-    return result;
+    return mariadb_get_result(connection, query);
 }
 
 void search_symptoms(MYSQL* connection) {
-    MYSQL_RES* result = NULL;
+    MYSQL_RES* result;
     MYSQL_ROW row;
     const char* symptoms;
 
