@@ -43,19 +43,6 @@ ORDER BY
 -- vir entre parênteses, logo em seguida ao nome do sintoma (por exemplo, “Febre
 -- (muito comum), Diarreia (raro), Dor no corpo (muito raro)”).
 
--- SELECT d.id, d.nome,
--- 	GROUP_CONCAT(
--- 		CONCAT(s.nome, ' (', s.ocorrencia, ')')
--- 		ORDER BY FIELD(s.ocorrencia,
--- 			'muito comum', 'comum', 'pouco comum', 'raro', 'muito raro'),
--- 			s.nome
--- 		SEPARATOR ', '
--- 	) AS sintomas
--- FROM doencas AS d
--- JOIN sintomas AS s ON d.id = s.id_doenca
--- GROUP BY d.id
--- ORDER BY d.nome;
-
 SELECT d.id, d.nome,
 	GROUP_CONCAT(
 		CONCAT(s.nome, ' (', ds.ocorrencia, ')')
@@ -65,8 +52,8 @@ SELECT d.id, d.nome,
 		SEPARATOR ', '
 	) AS sintomas
 FROM doencas AS d
-JOIN sintomas AS s
-JOIN doenca_sintoma AS ds ON ds.id_doenca = d.id AND ds.id_sintoma = s.id
+JOIN doenca_sintoma AS ds ON d.id = ds.id_doenca
+JOIN sintomas AS s ON ds.id_sintoma = s.id
 GROUP BY d.id
 ORDER BY d.nome;
 
@@ -77,10 +64,12 @@ ORDER BY d.nome;
 -- as linhas devem ser organizadas em ordem decrescente em relação à quantidade
 -- de doenças, seguida pela ordem alfabética em relação ao tipo do patógeno.
 
--- SELECT patogeno_tipo AS patogeno, COUNT(*) AS qtd_doencas
--- FROM doencas
--- GROUP BY patogeno_tipo
--- ORDER BY qtd_doencas DESC, patogeno ASC;
+SELECT pt.nome AS patogeno, COUNT(*) AS qtd_doencas
+FROM doencas AS d
+JOIN patogenos AS p ON d.id_patogeno = p.id
+JOIN patogeno_tipo AS pt ON p.id_tipo = pt.id
+GROUP BY pt.nome
+ORDER BY qtd_doencas DESC, patogeno ASC;
 
 -- (e) Consulta para obter algumas estatísticas sobre os dados armazenados no
 -- sistema. A consulta deverá apresentar o número de doenças cadastradas, o
@@ -89,34 +78,34 @@ ORDER BY d.nome;
 -- doença. As colunas devem ser apresentadas nessa ordem e as linhas devem ser
 -- organizadas em ordem crescente considerando a mesma ordem das colunas.
 
--- SELECT
--- 	(SELECT COUNT(*) FROM doencas) AS qtd_doencas,
--- 	(SELECT COUNT(DISTINCT nome) FROM sintomas) AS qtd_sintomas,
--- 	(SELECT AVG(contagem_sint)
--- 	FROM (
--- 		SELECT COUNT(*) AS contagem_sint
--- 		FROM sintomas
--- 		GROUP BY id_doenca
--- 	) AS contagem_por_doenca) AS media_sintomas,
--- 	(SELECT MIN(contagem_sint)
--- 	FROM (
--- 		SELECT COUNT(*) AS contagem_sint
--- 		FROM sintomas
--- 		GROUP BY id_doenca
--- 	) AS contagem_por_doenca) AS min_sintomas,
--- 	(SELECT MAX(contagem_sint)
--- 	FROM (
--- 		SELECT COUNT(*) AS contagem_sint
--- 		FROM sintomas
--- 		GROUP BY id_doenca
--- 	) AS contagem_por_doenca) AS max_sintomas
--- ORDER BY
--- 	qtd_doencas,
--- 	qtd_sintomas,
--- 	media_sintomas,
--- 	min_sintomas,
--- 	max_sintomas;
-
+SELECT
+	(SELECT COUNT(*) FROM doencas) AS qtd_doencas,
+	(SELECT COUNT(DISTINCT nome) FROM sintomas) AS qtd_sintomas,
+	(SELECT AVG(contagem_sint)
+	 FROM (
+		SELECT COUNT(*) AS contagem_sint
+		FROM doenca_sintoma
+		GROUP BY id_doenca
+	 ) AS contagem_por_doenca) AS media_sintomas,
+	(SELECT MIN(contagem_sint)
+	 FROM (
+		SELECT COUNT(*) AS contagem_sint
+		FROM doenca_sintoma
+		GROUP BY id_doenca
+	 ) AS contagem_por_doenca) AS min_sintomas,
+	(SELECT MAX(contagem_sint)
+	 FROM (
+		SELECT COUNT(*) AS contagem_sint
+		FROM doenca_sintoma
+		GROUP BY id_doenca
+	 ) AS contagem_por_doenca) AS max_sintomas
+ORDER BY
+	qtd_doencas,
+	qtd_sintomas,
+	media_sintomas,
+	min_sintomas,
+	max_sintomas;
+	
 -- (f) Consulta com estatísticas sobre os sintomas. A consulta deve apresentar o
 -- nome do sintoma, o número total de doenças que apresenta o sintoma, o número
 -- de doenças em que o sintoma é muito comum, comum, pouco comum, raro e muito
@@ -125,22 +114,24 @@ ORDER BY d.nome;
 -- seguida pela taxa de ocorrência (do muito comum ao muito raro) e, por fim,
 -- por ordem alfabética em relação ao nome do sintoma.
 
--- SELECT nome, COUNT(*) AS total_doencas,
--- 	SUM(CASE WHEN ocorrencia = 'muito comum' THEN 1 ELSE 0 END) AS muito_comum,
--- 	SUM(CASE WHEN ocorrencia = 'comum' THEN 1 ELSE 0 END) AS comum,
--- 	SUM(CASE WHEN ocorrencia = 'pouco comum' THEN 1 ELSE 0 END) AS pouco_comum,
--- 	SUM(CASE WHEN ocorrencia = 'raro' THEN 1 ELSE 0 END) AS raro,
--- 	SUM(CASE WHEN ocorrencia = 'muito raro' THEN 1 ELSE 0 END) AS muito_raro
--- FROM sintomas
--- GROUP BY nome
--- ORDER BY
--- 	total_doencas DESC,
--- 	muito_comum DESC,
--- 	comum DESC,
--- 	pouco_comum DESC,
--- 	raro DESC,
--- 	muito_raro DESC,
--- 	nome ASC;
+SELECT s.nome, 
+	COUNT(ds.id_doenca) AS total_doencas,
+	SUM(CASE WHEN ds.ocorrencia = 'muito comum' THEN 1 ELSE 0 END) AS muito_comum,
+	SUM(CASE WHEN ds.ocorrencia = 'comum' THEN 1 ELSE 0 END) AS comum,
+	SUM(CASE WHEN ds.ocorrencia = 'pouco comum' THEN 1 ELSE 0 END) AS pouco_comum,
+	SUM(CASE WHEN ds.ocorrencia = 'raro' THEN 1 ELSE 0 END) AS raro,
+	SUM(CASE WHEN ds.ocorrencia = 'muito raro' THEN 1 ELSE 0 END) AS muito_raro
+FROM sintomas AS s
+JOIN doenca_sintoma AS ds ON s.id = ds.id_sintoma
+GROUP BY s.nome
+ORDER BY
+	total_doencas DESC,
+	muito_comum DESC,
+	comum DESC,
+	pouco_comum DESC,
+	raro DESC,
+	muito_raro DESC,
+	s.nome ASC;
 
 -- (g) Consulta para listar todas as doenças que possuem um determinado conjunto
 -- de sintomas. Devem ser apresentados o id da doença e o seu nome (mantendo as
@@ -148,16 +139,18 @@ ORDER BY d.nome;
 -- nome da doença). Para essa questão, considere o seguinte conjunto de sintomas
 -- “Febre” e “Diarreia”.
 
--- (SELECT d.id, d.nome
--- 	FROM doencas AS d
--- 	JOIN sintomas AS s ON d.id = s.id_doenca
--- 	WHERE s.nome = 'febre')
--- INTERSECT
--- (SELECT d.id, d.nome
--- 	FROM doencas AS d
--- 	JOIN sintomas AS s ON d.id = s.id_doenca
--- 	WHERE s.nome = 'diarreia')
--- ORDER BY nome ASC;
+(SELECT d.id, d.nome
+	FROM doencas AS d
+	JOIN doenca_sintoma AS ds ON d.id = ds.id_doenca
+	JOIN sintomas AS s ON ds.id_sintoma = s.id
+	WHERE s.nome = 'Febre')
+INTERSECT
+(SELECT d.id, d.nome
+	FROM doencas AS d
+	JOIN doenca_sintoma AS ds ON d.id = ds.id_doenca
+	JOIN sintomas AS s ON ds.id_sintoma = s.id
+	WHERE s.nome = 'Diarreia')
+ORDER BY nome ASC;
 
 -- (h) Consulta para listar as doenças mais prováveis para uma lista de sintomas
 -- analisada. A consulta deve retornar o id da doença e o seu nome. Para essa
