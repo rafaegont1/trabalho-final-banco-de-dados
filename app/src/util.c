@@ -30,8 +30,8 @@ void scanf_and_clear_stdin(const char* fmt, void* dst, const char* msg) {
     while (scanf(fmt, dst) != 1) {
         clear_stdin();
         printf(
-            COLOR_YELLOW "Erro ao ler entrada"
-            COLOR_RESET  ". %s novamente: ", msg
+            COLOR_YELLOW "scanf() falhou\n"
+            COLOR_RESET  "%s novamente: ", msg
         );
     }
     clear_stdin();
@@ -42,7 +42,7 @@ int read_line(MYSQL* connection, char* str) {
     char tmp[256];
 
     if (fgets(tmp, sizeof(tmp), stdin) == NULL) {
-        printf_error("fgets() falhou");
+        printf_error("fgets() falhou\n");
         str[0] = '\0';
         return 1;
     }
@@ -53,11 +53,9 @@ int read_line(MYSQL* connection, char* str) {
     return 0;
 }
 
-void write_log(enum log_type type) {
+void write_log(const enum log_type type) {
     static const char* LOG_TYPE_STR[] = {
-        "cadastro",
-        "consulta",
-        "emissão de relatório",
+        "cadastro", "consulta", "emissão de relatório",
     };
 
     FILE* fp;
@@ -73,7 +71,7 @@ void write_log(enum log_type type) {
 
     fprintf(fp,
         "Operação \"%s\" realizada na data %02d/%02d/%04d"
-        "às %02d:%02d:%02d horas\n", LOG_TYPE_STR[type],
+        " às %02d:%02d:%02d horas\n", LOG_TYPE_STR[type],
         local_time->tm_mday,
         local_time->tm_mon + 1,
         local_time->tm_year + 1900,
@@ -87,4 +85,17 @@ void write_log(enum log_type type) {
 
 void mariadb_error_handler(MYSQL* connection) {
     printf_error("mariadb error: %s\n", mysql_error(connection));
+}
+
+MYSQL_RES* mariadb_get_result(MYSQL* connection, const char* query) {
+    MYSQL_RES* result;
+
+    if (mysql_query(connection, query) != 0) {
+        mariadb_error_handler(connection);
+        result = NULL;
+    } else if ((result = mysql_store_result(connection)) == NULL) {
+        mariadb_error_handler(connection);
+    }
+
+    return result;
 }

@@ -19,7 +19,8 @@ void clear_stdin();
 int printf_error(const char* fmt, ...);
 void scanf_and_clear_stdin(const char* fmt, void* dst, const char* msg);
 int read_line(MYSQL* connection, char* str);
-void write_log(enum log_type type);
+void write_log(const enum log_type type);
 void mariadb_error_handler(MYSQL* connection);
+MYSQL_RES* mariadb_get_result(MYSQL* connection, const char* query);
 
 #endif // UTIL_H

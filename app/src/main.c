@@ -17,12 +17,15 @@ int main(void) {
         op = show_menu();
 
         switch (op) {
-            case 1:  insertion_menu(connection); break;
-            case 2:  list_doencas(connection); break;
+            case 1:  insertion_menu(connection);  break;
+            case 2:  list_doencas(connection);    break;
             case 3:  search_symptoms(connection); break;
-            case 4:  break; // Emissão de Relatórios
-            case 5:  printf("Saindo...\n"); break;
-            default: printf("Comando não definido\n"); break;
+            case 4:                               break; // Emissão de Relatórios
+            case 5:  printf("Saindo...\n");       break;
+
+            default:
+                printf(COLOR_YELLOW "Comando não definido\n" COLOR_RESET);
+                break;
         }
 
     } while (op != 5);
@@ -51,7 +54,7 @@ static MYSQL* mariadb_init() {
             0)           // Additional options
         == NULL)
     {
-        printf_error("Não foi possível conectar com os dados informados\n");
+        printf_error("mysql_real_connect() falhou\n");
         mariadb_error_handler(connection);
         exit(EXIT_FAILURE);
     }
