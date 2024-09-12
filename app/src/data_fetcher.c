@@ -5,9 +5,13 @@
 #include <string.h>
 #include <mariadb_com.h>
 #include "pdfgen.h"
+#include "report.h"
 #include "util.h"
 
-static int show_menu() {
+// -----------------------------------------------------------------------------
+// LISTAR DOENÇAS
+
+static int show_menu_list_doencas() {
     int op;
 
     printf(
@@ -36,7 +40,7 @@ static const char* get_where_clause(MYSQL* connection, const int op) {
         "pt.nome"  // patógeno
     };
 
-    static char clause[128];
+    static char clause[256];
     char to_find[64];
 
     strcpy(clause, "WHERE ");
@@ -90,7 +94,7 @@ void list_doencas(MYSQL* connection) {
     int op;
     const char* where_clause = NULL;
 
-    op = show_menu();
+    op = show_menu_list_doencas();
 
     if (op == 6) {
         printf("Voltando...\n");
@@ -116,6 +120,9 @@ void list_doencas(MYSQL* connection) {
     write_log(LOG_CONSULTA);
     mysql_free_result(result);
 }
+
+// -----------------------------------------------------------------------------
+// LISTAR DOENÇAS
 
 static const char* get_symptoms(MYSQL* connection) {
     int count = 0;
@@ -189,7 +196,7 @@ static MYSQL_RES* get_symptoms_result(MYSQL* connection, const char* symptoms) {
     return mariadb_get_result(connection, query);
 }
 
-void search_symptoms(MYSQL* connection) {
+void diagnostic(MYSQL* connection) {
     MYSQL_RES* result;
     MYSQL_ROW row;
     const char* symptoms;
@@ -208,4 +215,75 @@ void search_symptoms(MYSQL* connection) {
 
     write_log(LOG_RELATORIO);
     mysql_free_result(result);
+}
+
+// -----------------------------------------------------------------------------
+// FAZER RELATÓRIO
+
+static int show_menu_make_report() {
+    int op;
+
+    printf(
+        "1) Criar relatório para doença\n"
+        "2) Criar relatório para diagnóstico\n"
+        "   de doenças mais prováveis\n"
+        "3) Voltar\n"
+        DASHED_LINE
+    );
+
+    do {
+        scanf_and_clear_stdin("%d", &op, "Digite o comando");
+    } while (op < 1 || op > 3);
+
+    return op;
+}
+
+static void doenca_report(MYSQL* connection) {
+    MYSQL_RES* result;
+    MYSQL_ROW doenca;
+    char where_clause[256] = "WHERE d.cid = \'";
+    char cid[64];
+
+    printf("Digite o CID doença: ");
+    read_line(connection, cid);
+    strcat(where_clause, cid);
+    strcat(where_clause, "\'");
+
+    result = get_doenca_result(connection, where_clause);
+    doenca = mysql_fetch_row(result);
+
+    if (doenca != NULL) {
+        create_doenca_report(&doenca);
+        printf("Relatório criado!\n" );
+        write_log(LOG_RELATORIO);
+    } else {
+        printf(COLOR_YELLOW "Doença não encontrada\n" COLOR_RESET);
+    }
+
+    mysql_free_result(result);
+}
+
+static void diagnostic_report(MYSQL* connection) {
+    MYSQL_RES* result;
+    const char* symptoms;
+
+    symptoms = get_symptoms(connection);
+    result = get_symptoms_result(connection, symptoms);
+    create_diagnostic_report(result);
+
+    printf("Relatório criado!\n" );
+    write_log(LOG_RELATORIO);
+    mysql_free_result(result);
+}
+
+void make_report(MYSQL* connection) {
+    int op;
+
+    op = show_menu_make_report();
+
+    switch (op) {
+        case 1: doenca_report(connection);     break;
+        case 2: diagnostic_report(connection); break;
+        case 3: printf("Saindo...\n");         break;
+    }
 }

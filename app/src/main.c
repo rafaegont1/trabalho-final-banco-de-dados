@@ -17,11 +17,11 @@ int main(void) {
         op = show_menu();
 
         switch (op) {
-            case 1:  insertion_menu(connection);  break;
-            case 2:  list_doencas(connection);    break;
-            case 3:  search_symptoms(connection); break;
-            case 4:                               break; // Emissão de Relatórios
-            case 5:  printf("Saindo...\n");       break;
+            case 1:  insertion_menu(connection); break;
+            case 2:  list_doencas(connection);   break;
+            case 3:  diagnostic(connection);     break;
+            case 4:  make_report(connection);    break;
+            case 5:  printf("Saindo...\n");      break;
 
             default:
                 printf(COLOR_YELLOW "Comando não definido\n" COLOR_RESET);
