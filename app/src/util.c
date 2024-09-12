@@ -30,8 +30,8 @@ void scanf_and_clear_stdin(const char* fmt, void* dst, const char* msg) {
     while (scanf(fmt, dst) != 1) {
         clear_stdin();
         printf(
-            COLOR_YELLOW "Erro ao ler entrada"
-            COLOR_RESET  ". %s novamente: ", msg
+            COLOR_YELLOW "scanf() falhou\n"
+            COLOR_RESET  "%s novamente: ", msg
         );
     }
     clear_stdin();
@@ -42,7 +42,7 @@ int read_line(MYSQL* connection, char* str) {
     char tmp[256];
 
     if (fgets(tmp, sizeof(tmp), stdin) == NULL) {
-        printf_error("fgets() falhou");
+        printf_error("fgets() falhou\n");
         str[0] = '\0';
         return 1;
     }

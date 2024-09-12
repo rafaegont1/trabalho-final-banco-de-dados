@@ -10,16 +10,17 @@
 static int show_menu() {
     int op;
 
+    printf(
+        "1) Listar todas as doenças\n"
+        "2) Consultar por nome técnico\n"
+        "3) Consultar por nome popular\n"
+        "4) Consultar por CID\n"
+        "5) Consultar por patógeno\n"
+        "6) Voltar\n"
+        DASHED_LINE
+    );
+
     do {
-        printf(
-            "1) Listar todas as doenças\n"
-            "2) Consultar por nome técnico\n"
-            "3) Consultar por nome popular\n"
-            "4) Consultar por CID\n"
-            "5) Consultar por patógeno\n"
-            "6) Voltar\n"
-            "Digite o comando: "
-        );
         scanf_and_clear_stdin("%d", &op, "Digite o comando");
     } while (op < 1 || op > 6);
 
@@ -32,7 +33,7 @@ static const char* get_where_clause(MYSQL* connection, const int op) {
         "d.nome",  // nome técnico
         "np.nome", // nome popular
         "d.cid",   // CID
-        "p.id"     // patógeno
+        "pt.nome"  // patógeno
     };
 
     static char clause[128];
@@ -47,7 +48,7 @@ static const char* get_where_clause(MYSQL* connection, const int op) {
         op == 2 ? "nome técnico" :
         op == 3 ? "nome popular" :
         op == 4 ? "CID" :
-        op == 5 ? "patógeno causador" :
+        op == 5 ? "tipo de patógeno causador" :
         ""
     );
     read_line(connection, to_find);
@@ -65,7 +66,7 @@ static MYSQL_RES* get_doenca_result(MYSQL* connection, const char* where) {
     snprintf(query, sizeof(query),
         "SELECT d.id, d.nome, d.cid, p.nome AS pat_nome, pt.nome AS pat_tipo, "
         "    GROUP_CONCAT(DISTINCT np.nome ORDER BY np.nome SEPARATOR ', ') AS nomes_pop, "
-        "    GROUP_CONCAT(CONCAT(s.nome, ' (', ds.ocorrencia, ')') "
+        "    GROUP_CONCAT(DISTINCT CONCAT(s.nome, ' (', ds.ocorrencia, ')') "
         "        ORDER BY FIELD(ds.ocorrencia, 'muito comum', 'comum', 'pouco comum', 'raro', 'muito raro'), s.nome "
         "        SEPARATOR ', ') AS sintomas "
         "FROM doencas AS d "

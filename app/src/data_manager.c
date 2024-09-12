@@ -93,7 +93,7 @@ static void insert_sintoma(MYSQL* connection) {
     }
 }
 
-static void insert_doenca_sintomas(MYSQL* connection) {
+static void insert_doenca_sintoma(MYSQL* connection) {
     static const char* OCORRENCIA_STR[] = {
         "muito raro", "raro", "pouco comum", "comum", "muito comum"
     };
@@ -143,7 +143,7 @@ static void insert_nomes_pop(MYSQL* connection) {
     read_line(connection, nomes_pop.nome);
 
     snprintf(query, sizeof(query),
-        "INSERT INTO doenca_sintoma VALUES (%d, \'%s\')",
+        "INSERT INTO nomes_pop (id_doenca, nome) VALUES (%d, \'%s\')",
         nomes_pop.id_doenca, nomes_pop.nome
     );
 
@@ -180,7 +180,7 @@ void insertion_menu(MYSQL* connection) {
         case 2:  insert_patogeno(connection);        break;
         case 3:  insert_doenca(connection);          break;
         case 4:  insert_sintoma(connection);         break;
-        case 5:  insert_doenca_sintomas(connection); break;
+        case 5:  insert_doenca_sintoma(connection);  break;
         case 6:  insert_nomes_pop(connection);       break;
         case 7:  printf("Voltando...\n");            break;
         default: printf("Comando não definido\n");   break;
