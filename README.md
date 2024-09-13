@@ -1,10 +1,6 @@
 # Trabalho final de banco de dados
 
-Este trabalho tem como objetivo implementar um banco de dados projetado para armazenar e organizar informações detalhadas sobre doenças, sintomas, patógenos, e demais fatores relevantes para a saúde pública e medicina. Abaixo são apresentados os diagramas conceitual e lógico do trabalho.
-
-![Diagrama Conceitual](fig/01-projeto-conceitual-der.png)
-
-![Diagrama Lógico](fig/02-projeto-logico.png)
+Este trabalho tem como objetivo implementar um banco de dados projetado para armazenar e organizar informações detalhadas sobre doenças, sintomas, patógenos, e demais fatores relevantes para a saúde pública e medicina.
 
 ## Dependências
 
